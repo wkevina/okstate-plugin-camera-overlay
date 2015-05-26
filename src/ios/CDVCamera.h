@@ -68,6 +68,7 @@ typedef NSUInteger CDVMediaType;
 
 @property (strong) CDVPictureOptions* pictureOptions;
 
+@property (strong, nonatomic) IBOutlet UIImageView *overlayImageView;
 @property (copy)   NSString* callbackId;
 @property (copy)   NSString* postUrl;
 @property (strong) UIPopoverController* pickerPopoverController;
@@ -112,5 +113,11 @@ typedef NSUInteger CDVMediaType;
 
 - (void)locationManager:(CLLocationManager*)manager didUpdateToLocation:(CLLocation*)newLocation fromLocation:(CLLocation*)oldLocation;
 - (void)locationManager:(CLLocationManager *)manager didFailWithError:(NSError *)error;
+
+@end
+
+
+@interface CameraPickerOverlay : UIView
+
 
 @end

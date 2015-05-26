@@ -5,17 +5,8 @@
   "cordova": {
     "id": "cordova-plugin-camera",
     "platforms": [
-      "firefoxos",
       "android",
-      "amazon-fireos",
-      "ubuntu",
-      "ios",
-      "blackberry10",
-      "wp7",
-      "wp8",
-      "windows8",
-      "browser",
-      "windows"
+      "ios"
     ]
   },
   "repository": {

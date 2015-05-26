@@ -68,6 +68,8 @@ static NSString* toBase64(NSData* data) {
     pictureOptions.popoverOptions = [command argumentAtIndex:10 withDefault:nil];
     pictureOptions.cameraDirection = [[command argumentAtIndex:11 withDefault:@(UIImagePickerControllerCameraDeviceRear)] unsignedIntegerValue];
     
+    pictureOptions.overlayImageURL = [command argumentAtIndex:12 withDefault:nil];
+    
     pictureOptions.popoverSupported = NO;
     pictureOptions.usesGeolocation = NO;
     
@@ -697,6 +699,22 @@ static NSString* toBase64(NSData* data) {
     [super viewWillAppear:animated];
 }
 
+- (CGAffineTransform)previewTransform
+{
+    CGRect screenSize = [[UIScreen mainScreen] bounds];
+    
+    float aspectRatio = 4.0f/3.0f; // Preview will be 4:3
+    
+    float previewHeight = screenSize.size.width * aspectRatio;
+    
+    float footerSpace = screenSize.size.height - previewHeight; // pixels left over at bottom
+    
+    float offsetForY = footerSpace / 2.0f;
+    
+    return CGAffineTransformMakeTranslation(0.0, offsetForY);
+}
+
+
 + (instancetype) createFromPictureOptions:(CDVPictureOptions*)pictureOptions;
 {
     CDVCameraPicker* cameraPicker = [[CDVCameraPicker alloc] init];
@@ -716,7 +734,213 @@ static NSString* toBase64(NSData* data) {
         cameraPicker.mediaTypes = mediaArray;
     }
     
+    /*  Extension */
+//    [[NSBundle mainBundle] loadNibNamed:@"ImageOverlay" owner:cameraPicker options:nil];
+//    NSAssert(cameraPicker.overlayImageView != nil, @"overlayImageView should have been loaded from nib");
+//    cameraPicker.overlayImageView.frame = cameraPicker.cameraOverlayView.frame;
+//    cameraPicker.cameraOverlayView = cameraPicker.overlayImageView;
+//    cameraPicker.overlayImageView = nil;
+    
+    if (pictureOptions.overlayImageURL) {
+        
+        cameraPicker.customOverlay = [[CameraPickerOverlay alloc] initWithDelegate:cameraPicker url:pictureOptions.overlayImageURL frame:cameraPicker.view.frame];
+        
+        cameraPicker.cameraOverlayView = cameraPicker.customOverlay;
+        
+        cameraPicker.showsCameraControls = NO;
+    }
+    
+    //cameraPicker.cameraViewTransform = [cameraPicker previewTransform];
+    
     return cameraPicker;
 }
+
+@end
+
+@implementation CameraPickerOverlay
+
+- (instancetype)initWithDelegate:(UIImagePickerController*)delegate url:(NSString*)url frame:(CGRect)frame
+{
+    self = [self initWithFrame:frame];
+    
+    if (self) {
+        self.delegate = delegate;
+        self.url = url;
+    }
+    return self;
+}
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (self) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self addOverlayImageView];
+            [self addCameraButton];
+            [self addCancelButton];
+            [self addSlider];
+        });
+
+    }
+    return self;
+}
+
+
+- (void)addCameraButton {
+    self.cameraButton = [JPSCameraButton button];
+    self.cameraButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.cameraButton addTarget:self action:@selector(takePicture) forControlEvents:UIControlEventTouchUpInside];
+    [self addSubview:self.cameraButton];
+    
+    // Constraints
+    NSLayoutConstraint *horizontal = [NSLayoutConstraint constraintWithItem:self.cameraButton
+                                                                  attribute:NSLayoutAttributeCenterX
+                                                                  relatedBy:NSLayoutRelationEqual
+                                                                     toItem:self
+                                                                  attribute:NSLayoutAttributeCenterX
+                                                                 multiplier:1.0f
+                                                                   constant:0];
+    NSLayoutConstraint *bottom = [NSLayoutConstraint constraintWithItem:self.cameraButton
+                                                              attribute:NSLayoutAttributeBottom
+                                                              relatedBy:NSLayoutRelationEqual
+                                                                 toItem:self
+                                                              attribute:NSLayoutAttributeBottom
+                                                             multiplier:1.0f
+                                                               constant:-3.5f];
+    NSLayoutConstraint *width = [NSLayoutConstraint constraintWithItem:self.cameraButton
+                                                             attribute:NSLayoutAttributeWidth
+                                                             relatedBy:NSLayoutRelationEqual
+                                                                toItem:nil
+                                                             attribute:NSLayoutAttributeNotAnAttribute
+                                                            multiplier:1.0f
+                                                              constant:66.0f];
+    NSLayoutConstraint *height = [NSLayoutConstraint constraintWithItem:self.cameraButton
+                                                              attribute:NSLayoutAttributeHeight
+                                                              relatedBy:NSLayoutRelationEqual
+                                                                 toItem:nil
+                                                              attribute:NSLayoutAttributeNotAnAttribute
+                                                             multiplier:1.0f
+                                                               constant:66.0f];
+    [self addConstraints:@[horizontal, bottom, width, height]];
+}
+
+- (void)addCancelButton {
+    
+    self.cancelButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    
+    self.cancelButton.titleLabel.font = [UIFont systemFontOfSize:18.0f];
+    self.cancelButton.translatesAutoresizingMaskIntoConstraints = NO;
+    
+    [self.cancelButton setTitle:@"Cancel" forState:UIControlStateNormal];
+    [self.cancelButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+
+    
+    [self.cancelButton addTarget:self action:@selector(dismiss) forControlEvents:UIControlEventTouchUpInside];
+    
+    [self addSubview:self.cancelButton];
+    
+    NSLayoutConstraint *left = [NSLayoutConstraint constraintWithItem:self.cancelButton
+                                                            attribute:NSLayoutAttributeLeft
+                                                            relatedBy:NSLayoutRelationEqual
+                                                               toItem:self
+                                                            attribute:NSLayoutAttributeLeft
+                                                           multiplier:1.0f
+                                                             constant:15.5f];
+    NSLayoutConstraint *bottom = [NSLayoutConstraint constraintWithItem:self.cancelButton
+                                                              attribute:NSLayoutAttributeBottom
+                                                              relatedBy:NSLayoutRelationEqual
+                                                                 toItem:self
+                                                              attribute:NSLayoutAttributeBottom
+                                                             multiplier:1.0f
+                                                               constant:-19.5f];
+    [self addConstraints:@[left, bottom]];
+}
+
+- (void)addOverlayImageView
+{
+    NSURL *url = [NSURL URLWithString:self.url];
+    
+    NSLog(@"%@", url);
+    NSLog(@"%@", [url absoluteString]);
+    
+    UIImage *v = [UIImage imageWithData:[NSData dataWithContentsOfURL:url]];
+    
+    
+    if (v) {
+        
+        if (v.size.width > v.size.height) { // Landscape orientation
+            v = [UIImage imageWithCGImage:v.CGImage scale:1.0 orientation:UIImageOrientationRight];
+        }
+        
+        self.overlayImageView = [[UIImageView alloc] initWithImage:v];
+        
+        self.overlayImageView.translatesAutoresizingMaskIntoConstraints = NO;
+        
+        [self addSubview:self.overlayImageView];
+        
+        self.overlayImageView.contentMode = UIViewContentModeScaleAspectFit;
+        
+        [self.overlayImageView sizeToFit];
+        
+        NSLayoutConstraint *top = [NSLayoutConstraint constraintWithItem:self.overlayImageView attribute:NSLayoutAttributeTop relatedBy:NSLayoutRelationEqual toItem:self attribute:NSLayoutAttributeTop multiplier:1.0f constant:0.0f];
+        
+        NSLayoutConstraint *center = [NSLayoutConstraint constraintWithItem:self.overlayImageView attribute:NSLayoutAttributeCenterX relatedBy:NSLayoutRelationEqual toItem:self attribute:NSLayoutAttributeCenterX multiplier:1.0f constant:0.0];
+
+        
+        NSLayoutConstraint *height = [NSLayoutConstraint constraintWithItem:self.overlayImageView attribute:NSLayoutAttributeHeight relatedBy:NSLayoutRelationEqual toItem:self.overlayImageView attribute:NSLayoutAttributeWidth multiplier:v.size.height/v.size.width constant:0.0];
+        
+        NSLayoutConstraint *width = [NSLayoutConstraint constraintWithItem:self.overlayImageView attribute:NSLayoutAttributeWidth relatedBy:NSLayoutRelationEqual toItem:self attribute:NSLayoutAttributeWidth multiplier:1.0f constant:0.0];
+        
+        [self addConstraints:@[top, center, width, height]];
+    }
+}
+
+- (void)addSlider
+{
+    if (self.overlayImageView) {
+        
+        UISlider *slider = [[UISlider alloc] init];
+        
+        slider.maximumValue = 1.0f;
+        slider.minimumValue = 0.0f;
+        
+        slider.value = 0.25f;
+        
+        self.overlayImageView.alpha = slider.value;
+        
+        slider.translatesAutoresizingMaskIntoConstraints = NO;
+        
+        [self addSubview:slider];
+        
+        [slider addTarget:self action:@selector(sliderChanged:) forControlEvents:UIControlEventValueChanged];
+        
+        NSLayoutConstraint *leading = [NSLayoutConstraint constraintWithItem:slider attribute:NSLayoutAttributeLeading relatedBy:NSLayoutRelationEqual toItem:self.cameraButton attribute:NSLayoutAttributeTrailing multiplier:1.0f constant:20];
+        
+        NSLayoutConstraint *trailing = [NSLayoutConstraint constraintWithItem:slider attribute:NSLayoutAttributeTrailing relatedBy:NSLayoutRelationEqual toItem:self attribute:NSLayoutAttributeTrailing multiplier:1.0f constant:-20];
+        
+        NSLayoutConstraint *center = [NSLayoutConstraint constraintWithItem:slider attribute:NSLayoutAttributeCenterY relatedBy:NSLayoutRelationEqual toItem:self.cameraButton attribute:NSLayoutAttributeCenterY multiplier:1.0f constant:0];
+        
+        [self addConstraints:@[leading, trailing, center]];
+        
+    }
+}
+
+- (void)sliderChanged:(UISlider*)sender
+{
+    NSLog(@"Slider changed. Current value = %f", sender.value);
+    self.overlayImageView.alpha = sender.value;
+}
+
+- (void)dismiss
+{
+    [self.delegate dismissViewControllerAnimated:YES completion:nil];
+    
+}
+
+- (void)takePicture
+{
+    [self.delegate takePicture];
+}
+
 
 @end
