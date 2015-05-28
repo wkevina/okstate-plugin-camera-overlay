@@ -867,11 +867,6 @@ static NSString* toBase64(NSData* data) {
     
     
     if (v) {
-        
-        if (v.size.width > v.size.height) { // Landscape orientation
-            v = [UIImage imageWithCGImage:v.CGImage scale:1.0 orientation:UIImageOrientationRight];
-        }
-        
         self.overlayImageView = [[UIImageView alloc] initWithImage:v];
         
         self.overlayImageView.translatesAutoresizingMaskIntoConstraints = NO;

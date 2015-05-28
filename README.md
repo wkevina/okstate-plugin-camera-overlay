@@ -17,9 +17,7 @@
          under the License.
 -->
 
-# cordova-plugin-camera
-
-[![Build Status](https://travis-ci.org/apache/cordova-plugin-camera.svg)](https://travis-ci.org/apache/cordova-plugin-camera)
+# okstate-plugin-camera-overlay
 
 This plugin defines a global `navigator.camera` object, which provides an API for taking pictures and for choosing images from
 the system's image library.
@@ -121,7 +119,7 @@ Can only return photos as base64-encoded image.
 
 ### Firefox OS Quirks
 
-Camera plugin is currently implemented using [Web Activities](https://hacks.mozilla.org/2013/01/introducing-web-activities/). 
+Camera plugin is currently implemented using [Web Activities](https://hacks.mozilla.org/2013/01/introducing-web-activities/).
 
 ### iOS Quirks
 
@@ -256,7 +254,7 @@ Optional parameters to customize the camera settings.
 
 - Any `cameraDirection` value results in a back-facing photo.
 
-- Android also uses the Crop Activity for allowEdit, even though crop should work and actually pass the cropped image back to Cordova, the only one that works consistently is the one bundled 
+- Android also uses the Crop Activity for allowEdit, even though crop should work and actually pass the cropped image back to Cordova, the only one that works consistently is the one bundled
 with the Google Plus Photos application.  Other crops may not work.
 
 - `Camera.PictureSourceType.PHOTOLIBRARY` and `Camera.PictureSourceType.SAVEDPHOTOALBUM` both display the same photo album.
