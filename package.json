@@ -1,6 +1,6 @@
 {
   "name": "okstate-plugin-camera-overlay",
-  "version": "0.1-dev",
+  "version": "0.0.1",
   "description": "Camera Plugin with Overlay Image",
   "cordova": {
     "id": "okstate-plugin-camera-overlay",
