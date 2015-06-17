@@ -743,7 +743,19 @@ static NSString* toBase64(NSData* data) {
     
     if (pictureOptions.overlayImageURL) {
         
-        cameraPicker.customOverlay = [[CameraPickerOverlay alloc] initWithDelegate:cameraPicker url:pictureOptions.overlayImageURL frame:cameraPicker.view.frame];
+        BOOL landscape = UIDeviceOrientationIsLandscape([UIApplication sharedApplication].statusBarOrientation);
+        
+        CGRect frame = cameraPicker.view.frame;
+        
+        if (landscape) {
+            CGSize size = frame.size;
+            CGFloat temp = size.height;
+            size.height = size.width;
+            size.width = temp;
+            frame.size = size;
+        }
+        
+        cameraPicker.customOverlay = [[CameraPickerOverlay alloc] initWithDelegate:cameraPicker url:pictureOptions.overlayImageURL frame:frame];
         
         cameraPicker.cameraOverlayView = cameraPicker.customOverlay;
         
@@ -867,7 +879,14 @@ static NSString* toBase64(NSData* data) {
     
     
     if (v) {
+        
+        float aspectRatio = v.size.height / v.size.width;
+        if (aspectRatio < 1.0) {
+            v = [[UIImage alloc] initWithCGImage:v.CGImage scale:1.0 orientation:UIImageOrientationRight];
+        }
+        
         self.overlayImageView = [[UIImageView alloc] initWithImage:v];
+
         
         self.overlayImageView.translatesAutoresizingMaskIntoConstraints = NO;
         
